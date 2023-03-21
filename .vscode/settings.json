@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "DSP.C": "cpp"
+        "DSP.C": "cpp",
+        "DSP_outline.C": "cpp"
     }
 }
