@@ -164,9 +164,9 @@ Note findClosestNote(double frequency, double& percentError) {
 
 void setup() {
   // Enable ADC input on pin 34
-  //analogReadResolution(12); // Set the ADC resolution to 12 bits
-  //analogSetPinAttenuation(ADC_PIN, ADC_11db); // Set the input attenuation to 11 dB
-  //pinMode(ADC_PIN, INPUT); // Set the pin as an input
+  analogReadResolution(12); // Set the ADC resolution to 12 bits
+  analogSetPinAttenuation(ADC_PIN, ADC_11db); // Set the input attenuation to 11 dB
+  pinMode(ADC_PIN, INPUT); // Set the pin as an input
   
   // Set up the serial port
   Serial.begin(115200);
