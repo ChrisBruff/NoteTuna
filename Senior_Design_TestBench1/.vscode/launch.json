@@ -12,9 +12,9 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug",
-            "executable": "/Users/grahamsmith/Desktop/Senior_Design_TestBench1/.pio/build/esp32doit-devkit-v1/firmware.elf",
+            "executable": "c:/Users/chris/OneDrive/Documents/GitHub/NoteTuna/Senior_Design_TestBench1/.pio/build/esp32doit-devkit-v1/firmware.elf",
             "projectEnvName": "esp32doit-devkit-v1",
-            "toolchainBinDir": "/Users/grahamsmith/.platformio/packages/toolchain-xtensa-esp32/bin",
+            "toolchainBinDir": "C:/Users/chris/.platformio/packages/toolchain-xtensa-esp32/bin",
             "internalConsoleOptions": "openOnSessionStart",
             "preLaunchTask": {
                 "type": "PlatformIO",
@@ -25,18 +25,18 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (skip Pre-Debug)",
-            "executable": "/Users/grahamsmith/Desktop/Senior_Design_TestBench1/.pio/build/esp32doit-devkit-v1/firmware.elf",
+            "executable": "c:/Users/chris/OneDrive/Documents/GitHub/NoteTuna/Senior_Design_TestBench1/.pio/build/esp32doit-devkit-v1/firmware.elf",
             "projectEnvName": "esp32doit-devkit-v1",
-            "toolchainBinDir": "/Users/grahamsmith/.platformio/packages/toolchain-xtensa-esp32/bin",
+            "toolchainBinDir": "C:/Users/chris/.platformio/packages/toolchain-xtensa-esp32/bin",
             "internalConsoleOptions": "openOnSessionStart"
         },
         {
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (without uploading)",
-            "executable": "/Users/grahamsmith/Desktop/Senior_Design_TestBench1/.pio/build/esp32doit-devkit-v1/firmware.elf",
+            "executable": "c:/Users/chris/OneDrive/Documents/GitHub/NoteTuna/Senior_Design_TestBench1/.pio/build/esp32doit-devkit-v1/firmware.elf",
             "projectEnvName": "esp32doit-devkit-v1",
-            "toolchainBinDir": "/Users/grahamsmith/.platformio/packages/toolchain-xtensa-esp32/bin",
+            "toolchainBinDir": "C:/Users/chris/.platformio/packages/toolchain-xtensa-esp32/bin",
             "internalConsoleOptions": "openOnSessionStart",
             "loadMode": "manual"
         }

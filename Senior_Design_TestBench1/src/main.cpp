@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <arduinoFFT.h>
 
+
 // Define the ADC pin, number of samples, and sampling frequency
 #define ADC_PIN 34
 #define SAMPLES 1024
@@ -169,7 +170,7 @@ void setup() {
   pinMode(ADC_PIN, INPUT); // Set the pin as an input
   
   // Set up the serial port
-  Serial.begin(115200);
+  Serial.begin(9600);
   while (!Serial) {}
 
 }
