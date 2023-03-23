@@ -140,7 +140,6 @@ const Note noteTable[] = {
   {"B8", 7902.13},
 };
 
-
 const size_t noteTableSize = sizeof(noteTable) / sizeof(Note);
 
 // Function to find the closest musical note and percentage error for a given frequency
@@ -163,52 +162,84 @@ Note findClosestNote(double frequency, double& percentError) {
   return closestNote;
 }
 
+// Interrupt function to fill the ADC buffer
+void fillBuffer() {
+  for (int i = 0; i < SAMPLES; i++) {
+    adcBuffer[i] = analogRead(ADC_PIN);
+  }
+
+  bufferReady = true;
+}
+
 void setup() {
-  // Enable ADC input on pin 34
+  //Enable ADC input on pin 34
   analogReadResolution(12); // Set the ADC resolution to 12 bits
   analogSetPinAttenuation(ADC_PIN, ADC_11db); // Set the input attenuation to 11 dB
   pinMode(ADC_PIN, INPUT); // Set the pin as an input
-  
+
   // Set up the serial port
   Serial.begin(9600);
   while (!Serial) {}
 
+  // Attach the interrupt to fill the ADC buffer
+  attachInterrupt(ADC_PIN, fillBuffer, RISING);
 }
 
 
 void loop() {
 
-  // If the FFT is ready
-  if (fftReady) {
-    // Find and print the top 5 signals and their closest musical notes
-    FFT.MajorPeak();
-    for (int i = 1; i <= 5; i++) {
-      int index = FFT.MajorPeak() / (SAMPLING_FREQUENCY / SAMPLES) * i;
-      double frequency = index * (SAMPLING_FREQUENCY / SAMPLES);
-      double magnitude = fftBuffer[index];
-
-      double percentError;
-      Note closestNote = findClosestNote(frequency, percentError);
-
-      Serial.print("Peak ");
-      Serial.print(i);
-      Serial.print(": ");
-      Serial.print(frequency);
-      Serial.print(" Hz, Magnitude: ");
-      Serial.print(magnitude);
-      Serial.print(", Closest Note: ");
-      Serial.print(closestNote.name);
-      Serial.print(" (");
-      Serial.print(closestNote.frequency);
-      Serial.print(" Hz), Percent Error: ");
-      Serial.print(percentError);
-      Serial.println("%");
+  // If the ADC buffer is full and the FFT is not already in progress
+  if (bufferReady && !fftReady) {
+    // Perform the FFT on the ADC buffer
+    for (int i = 0; i < SAMPLES; i++) {
+      vReal[i] = adcBuffer[i];
+      vImag[i] = 0;
     }
 
-    fftReady = false; // Reset the fftReady flag
-  }
+    FFT.Windowing(FFT_WIN_TYP_HAMMING, FFT_FORWARD);
+    FFT.Compute(FFT_FORWARD);
+    FFT.ComplexToMagnitude();
+
+    // Copy the magnitude data to the fftBuffer
+    for (int i = 0; i < SAMPLES / 2; i++) {
+      double real = vReal[i];
+      double imag = vImag[i];
+      fftBuffer[i] = sqrt(real * real + imag * imag);
 }
 
+// Set the fftReady flag to indicate that the FFT is complete
+fftReady = true;
+bufferReady = false; // Reset the bufferReady flag
 
+}
 
+// If the FFT is ready
+if (fftReady) {
+// Find and print the top 5 signals and their closest musical notes
+FFT.MajorPeak();
+for (int i = 1; i <= 5; i++) {
+int index = FFT.MajorPeak() / (SAMPLING_FREQUENCY / SAMPLES) * i;
+double frequency = index * (SAMPLING_FREQUENCY / SAMPLES);
+double magnitude = fftBuffer[index];
 
+  double percentError;
+  Note closestNote = findClosestNote(frequency, percentError);
+
+  Serial.print("Peak ");
+  Serial.print(i);
+  Serial.print(": ");
+  Serial.print(frequency);
+  Serial.print(" Hz, Magnitude: ");
+  Serial.print(magnitude);
+  Serial.print(", Closest Note: ");
+  Serial.print(closestNote.name);
+  Serial.print(" (");
+  Serial.print(closestNote.frequency);
+  Serial.print(" Hz), Percent Error: ");
+  Serial.print(percentError);
+  Serial.println("%");
+}
+
+fftReady = false; // Reset the fftReady flag
+}
+}
