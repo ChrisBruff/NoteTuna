@@ -60,7 +60,7 @@ void IRAM_ATTR FFT_Compute(){
     // Compute FFT
     FFT.Windowing(FFT_WIN_TYP_HAMMING, FFT_FORWARD);
     FFT.Compute(FFT_FORWARD);
-    peak = FFT.MajorPeak(vReal, SAMPLES, SAMPLING_FREQUENCY);
+    peak = FFT.MajorPeak();
 
     // Set the fftReady flag to indicate that the FFT is complete
     fftReady = true;
@@ -70,7 +70,7 @@ void IRAM_ATTR FFT_Compute(){
 }
 
 void setup(){
-  dac1.outputCW(1000); // output cosine wave at parameter Hz
+  dac1.outputCW(440); // output cosine wave at parameter Hz
 
   analogReadResolution(12); // 12-bit ADC resolution
   analogSetPinAttenuation(GPIO_NUM_34, ADC_11db); // 11dB attenuation
@@ -82,17 +82,17 @@ void setup(){
   timerAlarmWrite(Timer0, 23, true); // 20 ticks at 1MHZ clock = 20 us
   timerAlarmEnable(Timer0);
 
-  // timer for fft after 1024 samples
+  // timer for fft after 1024 samples (23 x 1024 = 23552 ticks)
   Timer1 = timerBegin(1, 80, true); // 80 prescaler for 1MHZ clock from 80MHZ/80
   timerAttachInterrupt(Timer1, &FFT_Compute, RISING);
-  timerAlarmWrite(Timer1, 25000, true); // 20 ticks at 1MHZ clock = 20 us
+  timerAlarmWrite(Timer1, 23552, true);
   timerAlarmEnable(Timer1);
  
   Serial.begin(9600); // set serial at 9600 baud rate
 }
 
 void loop(){
-  // If the ADC buffer is full
+  // If the fft was computed, print frequency and reset flags
   if(fftReady){
     Serial.print(peak);
     Serial.println(" Hz");
