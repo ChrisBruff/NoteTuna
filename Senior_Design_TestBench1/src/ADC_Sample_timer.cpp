@@ -58,6 +58,7 @@ void compute_FFT(){
     }
 
     // Compute FFT
+    FFT.DCRemoval();
     FFT.Windowing(FFT_WIN_TYP_HAMMING, FFT_FORWARD);
     FFT.Compute(FFT_FORWARD);
 
@@ -74,7 +75,6 @@ void compute_FFT(){
     bufferReady = false; // Reset the bufferReady flag 
     fftReady = false; // Reset the fftReady flag
     timerIndex = 0; // reset adc sample timer index 
-    delay(1000);
   }
 }
 
