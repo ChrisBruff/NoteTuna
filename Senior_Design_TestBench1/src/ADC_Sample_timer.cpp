@@ -2,7 +2,7 @@
 #include <arduinoFFT.h>
 #include <DacESP32.h> // library to output cosine wave
 
-#define SAMPLES 2048
+#define SAMPLES 1024
 #define SAMPLING_FREQUENCY 44101 // set in conjunction with timerAlarmWrite() tick rate
 
 /*// frequency period pairs
@@ -16,17 +16,12 @@
   1/50000 = 20 us
 */
 
-// Index counter for timer
-volatile int timerIndex = 0;
+// ADC Buffer and index
+volatile double adcBuffer[SAMPLES];
+volatile int adcBufferIndex = 0;
 
-// Flags for ADC buffer and FFT ready
-volatile bool bufferReady = false;
-volatile bool fftReady = false;
-
-// ADC Buffer
-double adcBuffer[SAMPLES];
-
-// FFT
+// Start FFT flag, real and imag arrays
+volatile bool start_FFT = false;
 double vReal[SAMPLES];
 double vImag[SAMPLES];
 
@@ -36,21 +31,23 @@ DacESP32 dac1(GPIO_NUM_25);
 // Initialize the arduinoFFT
 arduinoFFT FFT = arduinoFFT(vReal, vImag, SAMPLES, SAMPLING_FREQUENCY);
 
-// Initialize timers
+// Initialize timer
 hw_timer_t *Timer0 = NULL;
+portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 
-// timer ISR to sample from ADC
+// timer ISR samples ADC every 22,675 ns
 void IRAM_ATTR sample_ADC(){
-  if((timerIndex < SAMPLES) && !bufferReady){
-    adcBuffer[timerIndex] = analogRead(GPIO_NUM_34);
-    timerIndex++;
-  }else if(timerIndex == SAMPLES){
-    bufferReady = true; 
-  }
+  portENTER_CRITICAL_ISR(&timerMux);
+  if(adcBufferIndex < SAMPLES){
+    adcBuffer[adcBufferIndex] = analogRead(GPIO_NUM_34); 
+    adcBufferIndex++;
+  }else if(adcBufferIndex == SAMPLES){
+    start_FFT = true;
+  }   
+  portEXIT_CRITICAL_ISR(&timerMux);
 }
 
 void compute_FFT(){
-  if (bufferReady && !fftReady){
     // pass adcbuffer to fft arrays
     for (int i = 0; i < SAMPLES; i++) {
       vReal[i] = adcBuffer[i];
@@ -58,28 +55,14 @@ void compute_FFT(){
     }
 
     // Compute FFT
-    FFT.DCRemoval();
     FFT.Windowing(FFT_WIN_TYP_HAMMING, FFT_FORWARD);
     FFT.Compute(FFT_FORWARD);
 
-    // Set the fftReady flag to indicate that the FFT is complete
-    fftReady = true;
-    bufferReady = false; // Reset the bufferReady flag
-  }
-
-  // If the fft was computed, print frequency and reset flags
-  if(fftReady){   
     Serial.print(FFT.MajorPeak());
     Serial.println(" Hz");
-
-    bufferReady = false; // Reset the bufferReady flag 
-    fftReady = false; // Reset the fftReady flag
-    timerIndex = 0; // reset adc sample timer index 
-  }
 }
-
 void setup(){
-  Serial.begin(9600); // set serial at 115200 baud rate
+  Serial.begin(115200); // set serial at 115200 baud rate
 
   dac1.outputCW(440); // output cosine wave at parameter Hz  
 
@@ -87,23 +70,16 @@ void setup(){
   analogSetPinAttenuation(GPIO_NUM_34, ADC_11db); // 11dB attenuation
   pinMode(GPIO_NUM_34, INPUT); // set ADC pin as input
 
-  // Timer0 with 1Mhz Clock or 1 us ticks
-  /*
-  // 50Khz sampling rate or 20 us sampling period with prescaler of 80 and 20 ticks
-  Timer0 = timerBegin(0, 80, true); // prescaler
-  timerAttachInterrupt(Timer0, &sample_ADC, RISING);
-  timerAlarmWrite(Timer0, 20, true); // ticks
-  timerAlarmEnable(Timer0);
-  */
-
   /*
     Configure Timer to sample ADC
     44101.433296 Hz sampling rate, or 22.675 us sampling period
     
     Timer Clock = 80Mhz / Prescaler
     set Prescaler from [2 - 65355]
-    
-    Prescaler of 2 : sets a 40 Mhz Clock that ticks every 25 ns
+
+    Prescale  2 : 40 Mhz Clock, 1 Tick = 25 ns
+    Prescale 80 :  1 Mhz Clock, 1 Tick =  1 us
+
     A sampling period of 22.675 us requires 907 ticks with a 40 Mhz clock
   */
   Timer0 = timerBegin(0, 2, true); // Timer 0 is configured to count up with a prescaler of 2
@@ -113,5 +89,13 @@ void setup(){
 }
 
 void loop(){
-  compute_FFT();
+  if(start_FFT){  
+    portENTER_CRITICAL(&timerMux);
+
+    compute_FFT();  
+    start_FFT = false; // Reset the start_FFT flag
+    adcBufferIndex = 0; // reset adc sample timer index 
+
+    portEXIT_CRITICAL(&timerMux); 
+  }
 }
