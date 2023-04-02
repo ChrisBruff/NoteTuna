@@ -36,24 +36,24 @@ void IRAM_ATTR sample_ADC(){
 }
 
 void compute_FFT(){
-    // pass adcbuffer to fft arrays
-    for (int i = 0; i < SAMPLES; i++) {
-      vReal[i] = adcBuffer[i];
-      vImag[i] = 0;
-    }
+  // pass adcbuffer to fft arrays
+  for (int i = 0; i < SAMPLES; i++) {
+    vReal[i] = adcBuffer[i];
+    vImag[i] = 0;
+  }
 
-    // Compute FFT
-    FFT.Windowing(FFT_WIN_TYP_RECTANGLE, FFT_FORWARD);
-    FFT.Compute(FFT_FORWARD);
+  // Compute FFT
+  FFT.Windowing(FFT_WIN_TYP_RECTANGLE, FFT_FORWARD);
+  FFT.Compute(FFT_FORWARD);
 
-    Serial.print(FFT.MajorPeak());
-    Serial.println(" Hz");
+  Serial.print(FFT.MajorPeak());
+  Serial.println(" Hz");
 }
 
 void setup(){
   Serial.begin(115200); // set serial at 115200 baud rate
 
-  dac1.outputCW(16); // output cosine wave at parameter Hz  
+  dac1.outputCW(440); // output cosine wave at parameter Hz  
 
   analogReadResolution(12); // 12-bit ADC resolution
   analogSetPinAttenuation(GPIO_NUM_34, ADC_11db); // 11dB attenuation
@@ -63,19 +63,20 @@ void setup(){
     
     PRESCALER = [2 - 65355]
         CLOCK = 80 Mhz / PRESCALER
+         TICK = 1 / CLOCK
 
-    PRESCALER :  CLOCK :   TICK : CALCULATIONS
-            2 : 40 Mhz :  25 ns :   906 Ticks = 22650 ns = 44150 Hz
-            2 : 40 Mhz :  25 ns :   907 Ticks = 22675 ns = 44101 Hz
-            2 : 40 Mhz :  25 ns :   908 Ticks = 22700 ns = 44053 Hz
-           80 :  1 Mhz :   1 us :    20 Ticks =    20 us = 50000 Hz
-           80 :  1 Mhz :   1 us :   100 Ticks =   100 us = 10000 Hz           
-           80 :  1 Mhz :   1 us :  1000 Ticks =  1000 us =  1000 Hz
+    PRESCALER :  CLOCK :   TICK : TICKS =  PERIOD  = FREQ
+            2 : 40 Mhz :  25 ns :   906 = 22650 ns = 44150 Hz
+              :        :        :   907 = 22675 ns = 44101 Hz
+              :        :        :   908 = 22700 ns = 44053 Hz
+           80 :  1 Mhz :   1 us :    20 =    20 us = 50000 Hz
+              :        :        :   100 =   100 us = 10000 Hz           
+              :        :        :  1000 =  1000 us =  1000 Hz
   */
   Timer0 = timerBegin(0, 80, true); // Timer 0 is configured to count up with a prescaler of 80
   timerAttachInterrupt(Timer0, &sample_ADC, RISING); // Attaches timer interrupt to the sample_ADC ISR
   timerAlarmWrite(Timer0, 1000, true); // interrupts after 1000 ticks and resets for repeated interrupts
-  timerAlarmEnable(Timer0);
+  timerAlarmEnable(Timer0); // enable Timer 0
 }
 
 void loop(){  
@@ -83,7 +84,7 @@ void loop(){
     portENTER_CRITICAL(&timerMux);
     start_FFT = false; // Reset the start_FFT flag
     adcBufferIndex = 0; // reset adc sample timer index 
-    compute_FFT();    
+    compute_FFT(); // compute FFT and print MajorPeak() frequency
     portEXIT_CRITICAL(&timerMux); 
   }
 }
