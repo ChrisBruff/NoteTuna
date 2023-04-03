@@ -2,7 +2,7 @@
 #include <arduinoFFT.h>
 #include <DacESP32.h> // library to output cosine wave
 
-#define SAMPLES 1024
+#define SAMPLES 2048
 #define SAMPLING_FREQUENCY 1000 // set in conjunction with timerAlarmWrite() tick rate
 
 // ADC Buffer and index
