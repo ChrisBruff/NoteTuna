@@ -8,6 +8,7 @@
 // ADC Buffer and index
 volatile double adcBuffer[SAMPLES];
 volatile int adcBufferIndex = 0;
+volatile bool adcBufferFull = false;
 
 // Start FFT flag, real and imag arrays
 volatile bool start_FFT = false;
@@ -30,30 +31,35 @@ void IRAM_ATTR sample_ADC(){
   if(adcBufferIndex < SAMPLES){
     adcBuffer[adcBufferIndex++] = analogRead(GPIO_NUM_34); 
   }else{
-    start_FFT = true;
+    adcBufferFull = true;
   }
   portEXIT_CRITICAL_ISR(&timerMux);
 }
-
-void compute_FFT(){
+// load fft buffers from adcBuffer
+void loadBuffer_FFT(){
   // pass adcbuffer to fft arrays
   for (int i = 0; i < SAMPLES; i++) {
     vReal[i] = adcBuffer[i];
     vImag[i] = 0;
   }
+  adcBufferFull = false; // Reset the start_FFT flag
+  adcBufferIndex = 0; // reset adcBuffer index  
+  start_FFT = true;
 
-  // Compute FFT
+}
+// compute and print fft
+void compute_FFT(){
   FFT.Windowing(FFT_WIN_TYP_RECTANGLE, FFT_FORWARD);
-  FFT.Compute(FFT_FORWARD);
-
+  FFT.Compute(FFT_FORWARD);    
   Serial.print(FFT.MajorPeak());
   Serial.println(" Hz");
+  start_FFT = false; // Reset the print_FFT flag
 }
 
 void setup(){
   Serial.begin(115200); // set serial at 115200 baud rate
 
-  dac1.outputCW(440); // output cosine wave at parameter Hz  
+  dac1.outputCW(25); // output cosine wave at parameter Hz  
 
   analogReadResolution(12); // 12-bit ADC resolution
   analogSetPinAttenuation(GPIO_NUM_34, ADC_11db); // 11dB attenuation
@@ -69,9 +75,14 @@ void setup(){
             2 : 40 Mhz :  25 ns :   906 = 22650 ns = 44150 Hz
               :        :        :   907 = 22675 ns = 44101 Hz
               :        :        :   908 = 22700 ns = 44053 Hz
+              :        :        :  1000 = 25000 ns = 40000 Hz
            80 :  1 Mhz :   1 us :    20 =    20 us = 50000 Hz
-              :        :        :   100 =   100 us = 10000 Hz           
-              :        :        :  1000 =  1000 us =  1000 Hz
+              :        :        :    22 =    22 us = 45455 Hz
+              :        :        :   100 =   100 us = 10000 Hz
+              :        :        :   200 =   200 us =  5000 Hz
+              :        :        :   300 =   300 us =  3333 Hz WORKS             
+              :        :        :   500 =   500 us =  2000 Hz WORKS
+              :        :        :  1000 =  1000 us =  1000 Hz WORKS
   */
   Timer0 = timerBegin(0, 80, true); // Timer 0 is configured to count up with a prescaler of 80
   timerAttachInterrupt(Timer0, &sample_ADC, RISING); // Attaches timer interrupt to the sample_ADC ISR
@@ -79,12 +90,16 @@ void setup(){
   timerAlarmEnable(Timer0); // enable Timer 0
 }
 
-void loop(){  
-  while(start_FFT){  
+void loop(){
+  while(adcBufferFull){
     portENTER_CRITICAL(&timerMux);
-    start_FFT = false; // Reset the start_FFT flag
-    adcBufferIndex = 0; // reset adc sample timer index 
-    compute_FFT(); // compute FFT and print MajorPeak() frequency
+    loadBuffer_FFT();
+    portEXIT_CRITICAL(&timerMux); 
+  }
+
+  while(start_FFT){
+    portENTER_CRITICAL(&timerMux);
+    compute_FFT();
     portEXIT_CRITICAL(&timerMux); 
   }
 }
