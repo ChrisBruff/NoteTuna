@@ -9,8 +9,8 @@
 #include <arduinoFFT.h>
 //#include <DacESP32.h>
 
-#define SAMPLES 2048 // need to lower N samples if increasing frequency
-#define SAMPLING_FREQUENCY 1000 // set in conjunction with timerAlarmWrite() tick rate
+#define SAMPLES 4096 // need to lower N samples if increasing frequency
+#define SAMPLING_FREQUENCY 5000 // set in conjunction with timerAlarmWrite() tick rate
 
 // ADC Buffer and index
 double adcBuffer[SAMPLES];
@@ -65,7 +65,7 @@ void loadBuffer_FFT(){
 // compute and print fft
 void compute_FFT(){
   FFT.Windowing(FFT_WIN_TYP_RECTANGLE, FFT_FORWARD);
-  FFT.Compute(FFT_FORWARD);    
+  FFT.Compute(FFT_FORWARD);
   Serial.print(FFT.MajorPeak());
   Serial.println(" Hz");
   start_FFT = false; // Reset the print_FFT flag
@@ -99,10 +99,10 @@ void setup(){
               :        :        :   500 =   500 us =  2000 Hz WORKS N = 4096
               :        :        :  1000 =  1000 us =  1000 Hz WORKS N = 4096
   */
-  // Timer0 set to sample at 1 Khz
+  // Timer0 set to sample at 10 Khz
   Timer0 = timerBegin(0, 80, true); // Timer 0 is configured to count up with a prescaler of 80
   timerAttachInterrupt(Timer0, &timer_ISR, RISING); // Attaches timer interrupt to the timer_ISR ISR
-  timerAlarmWrite(Timer0, 1000, true); // interrupts after 1000 ticks and resets for repeated interrupts
+  timerAlarmWrite(Timer0, 200, true); // interrupts after 100 ticks and resets for repeated interrupts
   timerAlarmEnable(Timer0); // enable Timer 0
 
 /*
