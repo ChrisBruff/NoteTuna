@@ -13,12 +13,13 @@
 #define SAMPLING_FREQUENCY 1000 // set in conjunction with timerAlarmWrite() tick rate
 
 // ADC Buffer and index
-volatile float adcBuffer[SAMPLES]; // changed from double to float
-volatile int adcBufferIndex = 0;
-volatile bool adcBufferFull = false;
+double adcBuffer[SAMPLES];
+int adcBufferIndex = 0;
+bool adcBufferFull = false;
+volatile bool sample_adc = false;
 
 // Start FFT flag, real and imag arrays
-volatile bool start_FFT = false;
+bool start_FFT = false;
 double vReal[SAMPLES];
 double vImag[SAMPLES];
 
@@ -35,14 +36,18 @@ hw_timer_t *Timer0 = NULL;
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 
 // timer ISR samples ADC every interrupt until adcBuffer is full
-void IRAM_ATTR sample_ADC(){
+void IRAM_ATTR timer_ISR(){
   portENTER_CRITICAL_ISR(&timerMux);
+  sample_adc = true;
+  portEXIT_CRITICAL_ISR(&timerMux);
+}
+
+void sample_ADC(){
   if(adcBufferIndex < SAMPLES){
     adcBuffer[adcBufferIndex++] = analogRead(GPIO_NUM_34); 
   }else{
     adcBufferFull = true;
   }
-  portEXIT_CRITICAL_ISR(&timerMux);
 }
 
 // load fft buffers from adcBuffer
@@ -68,7 +73,7 @@ void compute_FFT(){
 
 void setup(){
   Serial.begin(115200); // set serial at 115200 baud rate
-//  dac1.outputCW(440); // output cosine wave at parameter Hz  
+  //dac1.outputCW(440); // output cosine wave at parameter Hz  
   analogReadResolution(12); // 12-bit ADC resolution
   analogSetPinAttenuation(GPIO_NUM_34, ADC_11db); // 11dB attenuation
   pinMode(GPIO_NUM_34, INPUT); // set ADC pin as input
@@ -95,34 +100,39 @@ void setup(){
               :        :        :  1000 =  1000 us =  1000 Hz WORKS N = 4096
   */
   // Timer0 set to sample at 1 Khz
-  Timer0 = timerBegin(1, 80, true); // Timer 0 is configured to count up with a prescaler of 80
-  timerAttachInterrupt(Timer0, &sample_ADC, RISING); // Attaches timer interrupt to the sample_ADC ISR
+  Timer0 = timerBegin(0, 80, true); // Timer 0 is configured to count up with a prescaler of 80
+  timerAttachInterrupt(Timer0, &timer_ISR, RISING); // Attaches timer interrupt to the timer_ISR ISR
   timerAlarmWrite(Timer0, 1000, true); // interrupts after 1000 ticks and resets for repeated interrupts
   timerAlarmEnable(Timer0); // enable Timer 0
 
+/*
   // // Timer1 set to sample at 10Khz
   // Timer1 = timerBegin(1, 80, true); // Timer 1 is configured to count up with a prescaler of 80
-  // timerAttachInterrupt(Timer1, &sample_ADC, RISING); // Attaches timer interrupt to the sample_ADC ISR
+  // timerAttachInterrupt(Timer1, &timer_ISR, RISING); // Attaches timer interrupt to the timer_ISR ISR
   // timerAlarmWrite(Timer1, 20, true); // interrupts after 20 ticks and resets for repeated interrupts
   // timerAlarmEnable(Timer1); // enable Timer 1
 
   // // Timer2 set to sample at 44.1Khz
   // Timer2 = timerBegin(2, 2, true); // Timer 2 is configured to count up with a prescaler of 2
-  // timerAttachInterrupt(Timer2, &sample_ADC, RISING); // Attaches timer interrupt to the sample_ADC ISR
+  // timerAttachInterrupt(Timer2, &timer_ISR, RISING); // Attaches timer interrupt to the timer_ISR ISR
   // timerAlarmWrite(Timer2, 907, true); // interrupts after 907 ticks and resets for repeated interrupts
   // timerAlarmEnable(Timer2); // enable Timer 2
+*/
 }
 
 void loop(){
+  if(sample_adc){
+    portENTER_CRITICAL(&timerMux);
+    sample_adc = false;
+    portEXIT_CRITICAL(&timerMux);
+    sample_ADC();    
+  }
+
   if(adcBufferFull){
-  //  portENTER_CRITICAL(&timerMux);
     loadBuffer_FFT();
-  //  portEXIT_CRITICAL(&timerMux);
   }
 
   if(start_FFT){
-  //  portENTER_CRITICAL(&timerMux);
     compute_FFT();
-  //  portEXIT_CRITICAL(&timerMux);
   }
 }
