@@ -1,9 +1,9 @@
 #include <Arduino.h>
 #include <arduinoFFT.h>
-#include <DacESP32.h>
+//#include <DacESP32.h>
 
 #define SAMPLES 4096
-#define SAMPLING_FREQUENCY 3000
+#define SAMPLING_FREQUENCY 5000
 
 volatile double adcBuffer[SAMPLES];
 volatile int adcBufferIndex = 0;
@@ -12,7 +12,7 @@ volatile int start_FFT = false;
 double vReal[SAMPLES];
 double vImag[SAMPLES];
 
-DacESP32 dac1(GPIO_NUM_25);
+//DacESP32 dac1(GPIO_NUM_25);
 
 arduinoFFT FFT = arduinoFFT(vReal, vImag, SAMPLES, SAMPLING_FREQUENCY);
 
@@ -62,11 +62,12 @@ void setup(){
     timerAlarmWrite(Timer0, 1000000/SAMPLING_FREQUENCY, true);
     timerAlarmEnable(Timer0); // enable Timer 0
   
-    dac1.outputCW(440); // output cosine wave at parameter Hz  
+    //dac1.outputCW(440); // output cosine wave at parameter Hz  
 }
 
 void loop(){
-    if(start_FFT){ 
+    if(start_FFT){
+        portENTER_CRITICAL(&timerMux);
         for (int i = 0; i < SAMPLES; i++) {
             vReal[i] = adcBuffer[i];
             vImag[i] = 0;
@@ -80,5 +81,6 @@ void loop(){
 
         adcBufferIndex = 0;
         start_FFT = false;
+        portEXIT_CRITICAL(&timerMux);
     }
 }
