@@ -1,3 +1,6 @@
+/* 
+    Samples accurately with a sampling frequency of 5 kHz
+*/
 #include <Arduino.h>
 #include <arduinoFFT.h>
 //#include <DacESP32.h>
