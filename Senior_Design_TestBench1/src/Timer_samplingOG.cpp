@@ -2,10 +2,10 @@
 #include <arduinoFFT.h>
 //#include <DacESP32.h>
 
-#define SAMPLES 4096 // need to lower N samples if increasing frequency
-#define SAMPLING_FREQUENCY 20000 // set in conjunction with timerAlarmWrite() tick rate
+#define SAMPLES 4096
+#define SAMPLING_FREQUENCY 5000
 
-// ADC Buffer and index
+// ADC Buffer, index, and flags
 double adcBuffer[SAMPLES];
 int adcBufferIndex = 0;
 bool adcBufferFull = false;
@@ -26,7 +26,6 @@ arduinoFFT FFT = arduinoFFT(vReal, vImag, SAMPLES, SAMPLING_FREQUENCY);
 hw_timer_t *Timer0 = NULL;
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 
-
 // timer ISR samples ADC every interrupt until adcBuffer is full
 void IRAM_ATTR timer_ISR(){
   portENTER_CRITICAL_ISR(&timerMux);
@@ -38,7 +37,7 @@ void sample_ADC(){
   if(adcBufferIndex < SAMPLES){
     adcBuffer[adcBufferIndex++] = analogRead(GPIO_NUM_34); 
   }else{
-    adcBufferFull = true;
+    adcBufferFull = true; // Set the adcBufferFull flag
   }
 }
 
@@ -47,26 +46,27 @@ void loadBuffer_FFT(){
     vReal[i] = adcBuffer[i];
     vImag[i] = 0;
   }
-  adcBufferFull = false; // Reset the start_FFT flag
-  adcBufferIndex = 0; // reset adcBuffer index  
-  start_FFT = true;
+  adcBufferFull = false; // Reset the adcBufferFull flag
+  adcBufferIndex = 0; // Reset the adcBufferIndex flag
+  start_FFT = true; // Set the start_FFT flag
 }
 
 // compute and print fft
 void compute_FFT(){
   FFT.Windowing(FFT_WIN_TYP_RECTANGLE, FFT_FORWARD);
   FFT.Compute(FFT_FORWARD);
+
   Serial.print(FFT.MajorPeak());
   Serial.println(" Hz");
   start_FFT = false; // Reset the print_FFT flag
 }
 
 void setup(){
-  Serial.begin(115200); // set serial at 115200 baud rate
-  //dac1.outputCW(440); // output cosine wave at parameter Hz  
-  analogReadResolution(12); // 12-bit ADC resolution
-  analogSetPinAttenuation(GPIO_NUM_34, ADC_11db); // 11dB attenuation
-  pinMode(GPIO_NUM_34, INPUT); // set ADC pin as input
+  Serial.begin(115200);
+  analogReadResolution(12);
+  analogSetPinAttenuation(GPIO_NUM_34, ADC_11db);
+  pinMode(GPIO_NUM_34, INPUT);
+  //dac1.outputCW(440);
 
   /*Configure Timer to sample ADC
     
@@ -92,16 +92,16 @@ void setup(){
   // Timer0
   Timer0 = timerBegin(0, 80, true); // Timer 0 is configured to count up with a prescaler of 80
   timerAttachInterrupt(Timer0, &timer_ISR, RISING); // Attaches timer interrupt to the timer_ISR ISR
-  timerAlarmWrite(Timer0, 50, true); // interrupts after 100 ticks and resets for repeated interrupts
+  timerAlarmWrite(Timer0, 200, true); // interrupts after 200 ticks and resets for repeated interrupts
   timerAlarmEnable(Timer0); // enable Timer 0
 }
 
 void loop(){
   if(sample_adc){
     portENTER_CRITICAL(&timerMux);
+    sample_ADC();
     sample_adc = false;
     portEXIT_CRITICAL(&timerMux);
-    sample_ADC();
   }
 
   if(adcBufferFull){

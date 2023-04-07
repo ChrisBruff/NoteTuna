@@ -16,7 +16,6 @@ double vReal[SAMPLES];
 double vImag[SAMPLES];
 
 //DacESP32 dac1(GPIO_NUM_25);
-
 arduinoFFT FFT = arduinoFFT(vReal, vImag, SAMPLES, SAMPLING_FREQUENCY);
 
 hw_timer_t *Timer0 = NULL;
@@ -33,10 +32,11 @@ void IRAM_ATTR timer_ISR(){
 }
 
 void setup(){
-    Serial.begin(115200); // set serial at 115200 baud rate
-    analogReadResolution(12); // 12-bit ADC resolution
-    analogSetPinAttenuation(GPIO_NUM_34, ADC_11db); // 11dB attenuation
-    pinMode(GPIO_NUM_34, INPUT); // set ADC pin as input
+    Serial.begin(115200);
+    analogReadResolution(12);
+    analogSetPinAttenuation(GPIO_NUM_34, ADC_11db);
+    pinMode(GPIO_NUM_34, INPUT);
+    //dac1.outputCW(440);
 
     /*Configure Timer to sample ADC
 
@@ -63,9 +63,7 @@ void setup(){
     Timer0 = timerBegin(0, 80, true);
     timerAttachInterrupt(Timer0, &timer_ISR, RISING);
     timerAlarmWrite(Timer0, 1000000/SAMPLING_FREQUENCY, true);
-    timerAlarmEnable(Timer0); // enable Timer 0
-  
-    //dac1.outputCW(440); // output cosine wave at parameter Hz  
+    timerAlarmEnable(Timer0);
 }
 
 void loop(){
@@ -82,8 +80,8 @@ void loop(){
         Serial.print(FFT.MajorPeak());
         Serial.println(" Hz");
 
-        adcBufferIndex = 0;
         start_FFT = false;
+        adcBufferIndex = 0;
         portEXIT_CRITICAL(&timerMux);
     }
 }
